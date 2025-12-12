@@ -1,0 +1,13 @@
+CompileFlags:
+  Add:
+    - "-U__clang__" # Undefine the __clang__ macro
+  Remove:
+    - "-Werror"
+  CompilationDatabase: .
+---
+If:
+  PathExclude: "FreeRTOSConfig.h"
+CompileFlags:
+  Add:
+    - "-include"
+    - "FreeRTOS/include/FreeRTOS.h"
