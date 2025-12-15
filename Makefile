@@ -41,7 +41,7 @@ ifeq ($(shell command -v $(CC)),)
   $(error Compiler $(CC) not found in PATH. Please source setupenv.sh)
 endif
 
-# Determin Flags
+# Determine Flags
 INCLUDES = $(addprefix -I, $(INCLUDE_DIR))
 DEFINES = $(addprefix -D, CMSDK_CM7_SP)
 TARGET_FLAGS := -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard
@@ -53,13 +53,13 @@ LDFLAGS = $(TARGET_FLAGS) -T Device/CMSDK_CM7/Source/GCC/gcc_arm.ld -Wl,--gc-sec
 LDFLAGS += -Wl,-Map=$(BUILD_DIR)/output.map
 
 # Rules
+binary: $(BUILD_DIR)/$(BINARY_NAME)
+
 test:
 	@echo CFLAGS:$(CFLAGS)
 	@echo ASFLAGS:$(ASFLAGS)
 	@echo $(INCLUDES)
 	@echo $(OBJS)
-
-binary: $(BUILD_DIR)/$(BINARY_NAME)
 
 clean: 
 	-rm -rf $(BUILD_DIR)
