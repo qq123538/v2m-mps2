@@ -406,8 +406,6 @@
     if( ( x ) == 0 )              \
     {                             \
         taskDISABLE_INTERRUPTS(); \
-        extern int printf (const char *__restrict, ...);\
-        printf("Assert!\n");         \
         for( ; ; )                \
         ;                         \
     }

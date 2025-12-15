@@ -45,11 +45,12 @@ endif
 INCLUDES = $(addprefix -I, $(INCLUDE_DIR))
 DEFINES = $(addprefix -D, CMSDK_CM7_SP)
 TARGET_FLAGS := -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard
-COMMON_CFLAGS := $(TARGET_FLAGS) $(INCLUDES) $(DEFINES) -ffunction-sections -fdata-sections
-DEBUG_FLAGS := -g -O0 
+COMMON_CFLAGS := $(TARGET_FLAGS) $(INCLUDES) $(DEFINES) -ffunction-sections -fdata-sections -ffreestanding -std=gnu11
+DEBUG_FLAGS := -Os -g
 CFLAGS = $(COMMON_CFLAGS) $(DEBUG_FLAGS) -Wall -Werror
 ASFLAGS = $(COMMON_CFLAGS) $(DEBUG_FLAGS) -Werror
 LDFLAGS = $(TARGET_FLAGS) -T Device/CMSDK_CM7/Source/GCC/gcc_arm.ld -Wl,--gc-sections --specs=nosys.specs --specs=nano.specs
+LDFLAGS += -Wl,-Map=$(BUILD_DIR)/output.map
 
 # Rules
 test:
