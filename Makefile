@@ -1,80 +1,94 @@
-.PHONY: all binary clean test
+.PHONY: all elf clean test
 
-BINARY_NAME = $(shell basename $(PWD)).elf
+# --- Project Structure ---
+BINARY_NAME := $(shell basename $(PWD)).elf
+BUILD_DIR := build
+APP_DIR := src
+LIB_DIR := lib
+HW_DIR := hardware
 
-# Construct directory
-INCLUDE_DIR = Device/CMSDK_CM7/Include \
-							Cmsis/6.2.0/CMSIS/Core/Include \
-							Cmsis/6.2.0/CMSIS/Driver/Include \
-							Device \
-							Cmsis-Compiler/CMSIS-Compiler/2.1.0/include \
-							. \
-							FreeRTOS/portable/GCC/ARM_CM7/r0p1 \
-							FreeRTOS/include
-BUILD_DIR = Build
-OBJ_DIR = $(BUILD_DIR)/Obj
+# --- Tools ---
+COMPILER_PREFIX := arm-none-eabi-
+CC := $(COMPILER_PREFIX)gcc
+AS := $(COMPILER_PREFIX)gcc
+LD := $(COMPILER_PREFIX)gcc
 
-# Construct source files and object files
-ASM_SRCS = Device/CMSDK_CM7/Source/GCC/startup_CMSDK_CM7.S
-CC_SRCS = $(shell find . -maxdepth 1 -type f -name '*.c') \
-					Device/CMSDK_CM7/Source/system_CMSDK_CM7.c \
-					Device/USART_V2M-MPS2.c \
-					Cmsis-Compiler/CMSIS-Compiler/2.1.0/source/gcc/retarget_syscalls.c
-FREERTOS_SRCS = FreeRTOS/list.c \
-								FreeRTOS/queue.c \
-								FreeRTOS/tasks.c \
-								FreeRTOS/timers.c \
-								FreeRTOS/portable/GCC/ARM_CM7/r0p1/port.c \
-								FreeRTOS/portable/MemMang/heap_4.c
-SRCS += $(ASM_SRCS) $(CC_SRCS) $(FREERTOS_SRCS)
-OBJS = $(patsubst %.c,$(OBJ_DIR)/%.o,$(filter %.c,$(SRCS)))
-OBJS += $(patsubst %.S,$(OBJ_DIR)/%.o,$(filter %.S,$(SRCS)))
+# --- Source Files ---
+# Application sources
+C_SRCS := $(shell find $(APP_DIR) -name '*.c')
 
-# Constructor Compiler Commands
-COMPILER_PREFIX = arm-none-eabi-
-CC = $(COMPILER_PREFIX)gcc
-AS = $(COMPILER_PREFIX)gcc
-LD = $(COMPILER_PREFIX)gcc
+# Hardware Abstraction Layer sources
+C_SRCS += $(filter-out %/startup_CMSDK_CM7.c, $(shell find $(HW_DIR)/board/device -name '*.c'))
+C_SRCS += $(HW_DIR)/cmsis/CMSIS-Compiler/2.1.0/source/gcc/retarget_syscalls.c
+ASM_SRCS := $(shell find $(HW_DIR)/board/device/CMSDK_CM7/Source/GCC -name '*.S')
 
+# FreeRTOS sources
+FREERTOS_PORT := $(LIB_DIR)/FreeRTOS/portable
+C_SRCS += $(LIB_DIR)/FreeRTOS/list.c
+C_SRCS += $(LIB_DIR)/FreeRTOS/queue.c
+C_SRCS += $(LIB_DIR)/FreeRTOS/tasks.c
+C_SRCS += $(LIB_DIR)/FreeRTOS/timers.c
+C_SRCS += $(FREERTOS_PORT)/GCC/ARM_CM7/r0p1/port.c
+C_SRCS += $(FREERTOS_PORT)/MemMang/heap_4.c
+
+# Construct object file paths, placing them inside the build directory
+OBJS := $(patsubst %.c,$(BUILD_DIR)/obj/%.o,$(C_SRCS))
+OBJS += $(patsubst %.S,$(BUILD_DIR)/obj/%.o,$(ASM_SRCS))
+
+# --- Include Directories ---
+INCLUDE_DIRS := $(APP_DIR)/include
+INCLUDE_DIRS += $(HW_DIR)/board/device
+INCLUDE_DIRS += $(HW_DIR)/board/device/CMSDK_CM7/Include
+INCLUDE_DIRS += $(HW_DIR)/cmsis/CMSIS/6.2.0/CMSIS/Core/Include
+INCLUDE_DIRS += $(HW_DIR)/cmsis/CMSIS-Compiler/2.1.0/include
+INCLUDE_DIRS += $(HW_DIR)/cmsis/CMSIS/6.2.0/CMSIS/Driver/Include
+INCLUDE_DIRS += $(LIB_DIR)/FreeRTOS/include
+INCLUDE_DIRS += $(LIB_DIR)/FreeRTOS/portable/GCC/ARM_CM7/r0p1
+
+# --- Macro Definitions ---
+DEFINES = CMSDK_CM7_SP
+
+# --- Build Flags ---
 # Check Compiler
 ifeq ($(shell command -v $(CC)),)
-  $(error Compiler $(CC) not found in PATH. Please source setupenv.sh)
+  $(error Compiler $(CC) not found in PATH. Please source setupenv.sh or install the toolchain.)
 endif
 
-# Determine Flags
-INCLUDES = $(addprefix -I, $(INCLUDE_DIR))
-DEFINES = $(addprefix -D, CMSDK_CM7_SP)
+# --- Flags ---
 TARGET_FLAGS := -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard
-COMMON_CFLAGS := $(TARGET_FLAGS) $(INCLUDES) $(DEFINES) -ffunction-sections -fdata-sections -ffreestanding -std=gnu11
+COMMON_CFLAGS := $(TARGET_FLAGS) $(addprefix -I,$(INCLUDE_DIRS)) $(addprefix -D, $(DEFINES)) -ffunction-sections -fdata-sections -ffreestanding -std=gnu11
 DEBUG_FLAGS := -Os -g
-CFLAGS = $(COMMON_CFLAGS) $(DEBUG_FLAGS) -Wall -Werror
-ASFLAGS = $(COMMON_CFLAGS) $(DEBUG_FLAGS) -Werror
-LDFLAGS = $(TARGET_FLAGS) -T Device/CMSDK_CM7/Source/GCC/gcc_arm.ld -Wl,--gc-sections --specs=nosys.specs --specs=nano.specs
-LDFLAGS += -Wl,-Map=$(BUILD_DIR)/output.map
+CFLAGS := $(COMMON_CFLAGS) $(DEBUG_FLAGS) -Wall -Werror
+ASFLAGS := $(COMMON_CFLAGS) $(DEBUG_FLAGS) -Werror
+LDFLAGS := $(TARGET_FLAGS) -T $(HW_DIR)/board/device/CMSDK_CM7/Source/GCC/gcc_arm.ld -Wl,--gc-sections -Wl,-Map=$(BUILD_DIR)/output.map --specs=nosys.specs --specs=nano.specs
 
-# Rules
-binary: $(BUILD_DIR)/$(BINARY_NAME)
+# --- Rules ---
+all: elf
+
+elf: $(BUILD_DIR)/$(BINARY_NAME)
 
 test:
-	@echo CFLAGS:$(CFLAGS)
-	@echo ASFLAGS:$(ASFLAGS)
-	@echo $(INCLUDES)
-	@echo $(OBJS)
+	@echo "Found C sources: $(C_SRCS)"
+	@echo "Found ASM sources: $(ASM_SRCS)"
+	@echo "Object files: $(OBJS)"
+	@echo "Include paths: $(INCLUDE_DIRS)"
 
 clean: 
-	-rm -rf $(BUILD_DIR)
+	-@rm -rf $(BUILD_DIR)
 
-$(OBJ_DIR)/%.o: %.c
-	@echo +CC $<
+# Rule to compile a C source file
+$(BUILD_DIR)/obj/%.o: %.c
+	@echo "[CC] $<"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-# use gcc to assemble .S files, it will first preprocess them and call as
-$(OBJ_DIR)/%.o: %.S
-	@echo +AS $<
+# Rule to assemble an Assembly source file
+$(BUILD_DIR)/obj/%.o: %.S
+	@echo "[AS] $<"
 	@mkdir -p $(dir $@)
 	@$(AS) $(ASFLAGS) -c $< -o $@
 
+# Rule to link the final executable
 $(BUILD_DIR)/$(BINARY_NAME): $(OBJS)
-	@echo +LK $@
+	@echo "[LK] $@"
 	@$(LD) $(LDFLAGS) -o $@ $(OBJS)

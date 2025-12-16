@@ -10,4 +10,4 @@ If:
 CompileFlags:
   Add:
     - "-include"
-    - "FreeRTOS/include/FreeRTOS.h"
+    - "lib/FreeRTOS/include/FreeRTOS.h"
