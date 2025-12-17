@@ -41,7 +41,7 @@ source tools/setupenv.sh
 Clone this repository and initialize the FreeRTOS submodule in one step:
 
 ```sh
-git clone --recurse-submodules <your-repository-url>
+git clone --recurse-submodules https://github.com/qq123538/v2m-mps2.git
 cd v2m-mps2
 ```
 
