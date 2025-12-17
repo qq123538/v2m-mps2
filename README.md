@@ -1,6 +1,4 @@
-# V2M-MPS2
-The project aims to build ARM **V2M-MPS2** in Linux and run it in QEMU.  
-**V2M-MPS2** is an Evaluation Board from ARM.
+# Embedded Firmware for V2M-MPS2 (Cortex-M7)
 
 ## Features
 
@@ -27,13 +25,8 @@ Follow these steps to set up your build environment and compile the project.
 Ensure you have the following tools installed on your system:
 *   `git`
 *   `make`
-*   An Arm cross-compiler toolchain (`arm-none-eabi-gcc`).
-
-You can use the provided `setupenv.sh` script to check for and activate the required toolchain if you are using `vcpkg`.
-
-```sh
-source tools/setupenv.sh
-```
+*   `arm-none-eabi-gcc` toolchain
+*   `qemu-system-arm`
 
 ### 2. Cloning the Repository
 
@@ -43,34 +36,47 @@ Clone this repository and initialize the FreeRTOS submodule in one step:
 git clone --recurse-submodules https://github.com/qq123538/v2m-mps2.git
 cd v2m-mps2
 ```
+> **Note:** If you have already cloned the repository without the `--recurse-submodules` flag, initialize the submodule with: `git submodule update --init --recursive`
 
-If you have already cloned the repository without the `--recurse-submodules` flag, you can initialize the submodule with:
-```sh
-git submodule update --init --recursive
-```
+### 3. Environment Setup
 
-### 3. Building the Project
-
-To build the application, simply run the `make` command from the project root:
+A setup script is provided to help configure your shell environment. If you are using `vcpkg` to manage your toolchain, this script will activate it. It should be **sourced**, not executed directly.
 
 ```sh
-make
+source tools/setupenv.sh
 ```
 
-This will compile all source files and generate the final executable (`v2m-mps2.elf`) and a map file in the `build/` directory.
+## Usage
 
-To clean the build artifacts, run:
-```sh
-make clean
-```
+### Building the Firmware
+
+The `Makefile` is configured to create both an ELF file (for debugging) and a raw binary file (for production flashing).
+
+*   **To build both `.elf` and `.bin` files:**
+    ```sh
+    make
+    ```
+*   **To clean all build artifacts:**
+    ```sh
+    make clean
+    ```
+The compiled firmware (`v2m-mps2.elf`, `v2m-mps2.bin`) and a map file will be placed in the `build/` directory.
+
 ### Running in QEMU
 
-You can run the compiled firmware directly in QEMU:
-```sh
-qemu-system-arm -M mps2-an500 -kernel build/v2m-mps2.elf -nographic
-```
+The `Makefile` provides convenient targets for running the firmware in QEMU.
 
-### 4. Debugging with GDB and QEMU
+*   **To run the ELF file (recommended for most testing):**
+    ```sh
+    make run-elf
+    ```
+*   **To run the raw binary:**
+    This method more closely simulates how a bootloader would load a raw binary into memory.
+    ```sh
+    make run-bin
+    ```
+
+### Debugging
 
 1.  **Start QEMU in Debug Mode:**
     The `-s` flag is a shortcut for `-gdb tcp::1234`, which opens a GDB server on port 1234. The `-S` flag freezes the CPU at startup, waiting for a debugger to connect.
@@ -79,12 +85,12 @@ qemu-system-arm -M mps2-an500 -kernel build/v2m-mps2.elf -nographic
     ```
 
 2.  **Start GDB and Connect:**
-    In a separate terminal, launch the ARM GDB client and connect to the QEMU GDB server.
+    In a separate terminal, launch `arm-none-eabi-gdb`, making sure to use the **`.elf`** file which contains the debug symbols.
     ```sh
     arm-none-eabi-gdb build/v2m-mps2.elf
     ```
-    Inside GDB, run the following command:
+    Inside GDB, connect to the QEMU GDB server:
     ```gdb
     target remote localhost:1234
     ```
-    You can now use standard GDB commands (`c` to continue, `b` to set breakpoints, `step`, `next`, etc.) to debug the firmware.
+    You can now use standard GDB commands (`c`, `b`, `step`, `next`, etc.) to debug the firmware.

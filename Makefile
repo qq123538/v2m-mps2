@@ -1,7 +1,8 @@
-.PHONY: all elf clean test
+.PHONY: all clean test run-elf run-bin
 
 # --- Project Structure ---
-BINARY_NAME := $(shell basename $(PWD)).elf
+BINARY_NAME := $(shell basename $(PWD)).bin
+ELF_NAME := $(shell basename $(PWD)).elf
 BUILD_DIR := build
 APP_DIR := src
 LIB_DIR := lib
@@ -63,9 +64,16 @@ ASFLAGS := $(COMMON_CFLAGS) $(DEBUG_FLAGS) -Werror
 LDFLAGS := $(TARGET_FLAGS) -T $(HW_DIR)/board/device/CMSDK_CM7/Source/GCC/gcc_arm.ld -Wl,--gc-sections -Wl,-Map=$(BUILD_DIR)/output.map --specs=nosys.specs --specs=nano.specs
 
 # --- Rules ---
-all: elf
+all: $(BUILD_DIR)/$(ELF_NAME) $(BUILD_DIR)/$(BINARY_NAME)
 
-elf: $(BUILD_DIR)/$(BINARY_NAME)
+run-elf: $(BUILD_DIR)/$(ELF_NAME)
+	@qemu-system-arm -M mps2-an500 -kernel $(BUILD_DIR)/$(ELF_NAME) -nographic
+
+# Method one: use more realistic loading method for binary files
+# Method two: easier way (but less realistic)
+run-bin: $(BUILD_DIR)/$(BINARY_NAME)
+	@qemu-system-arm -M mps2-an500 -device loader,file=$(BUILD_DIR)/$(BINARY_NAME),addr=0x00000000 -nographic
+	@# @qemu-system-arm -M mps2-an500 -kernel build/v2m-mps2.bin -nographic
 
 test:
 	@echo "Found C sources: $(C_SRCS)"
@@ -89,6 +97,10 @@ $(BUILD_DIR)/obj/%.o: %.S
 	@$(AS) $(ASFLAGS) -c $< -o $@
 
 # Rule to link the final executable
-$(BUILD_DIR)/$(BINARY_NAME): $(OBJS)
+$(BUILD_DIR)/$(ELF_NAME): $(OBJS)
 	@echo "[LK] $@"
 	@$(LD) $(LDFLAGS) -o $@ $(OBJS)
+
+$(BUILD_DIR)/$(BINARY_NAME): $(BUILD_DIR)/$(ELF_NAME)
+	@echo "[POST] Generating binary: $(BINARY_NAME)"
+	@arm-none-eabi-objcopy -O binary $< $@
