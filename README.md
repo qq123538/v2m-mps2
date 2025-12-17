@@ -1,7 +1,6 @@
 # V2M-MPS2
-
-   The project aims to build ARM **V2M-MPS2** in Linux and run it in QEMU.
-   **V2M-MPS2** is an Evaluation Board from ARM.
+The project aims to build ARM **V2M-MPS2** in Linux and run it in QEMU.  
+**V2M-MPS2** is an Evaluation Board from ARM.
 
 ## Features
 
