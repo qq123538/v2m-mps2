@@ -1,7 +1,7 @@
 #include "RTE_Components.h"
 #include CMSIS_device_header
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os2.h"
+#include "logger.h"
 #include <stdio.h>
 
 extern int stdout_init( void );
@@ -12,8 +12,8 @@ static void vTask1( void* pvParameters )
 
     for ( ;; )
     {
-        printf( "Hello from Task 1\r\n" );
-        vTaskDelay( pdMS_TO_TICKS( 1000 ) );
+        LOG( "Hello from Task 1\r\n" );
+        osDelay( 1000 );
     }
 }
 
@@ -23,33 +23,33 @@ static void vTask2( void* pvParameters )
 
     for ( ;; )
     {
-        printf( "Hello from Task 2\r\n" );
-        vTaskDelay( pdMS_TO_TICKS( 10000 ) );
+        LOG( "Hello from Task 2\r\n" );
+        osDelay( 2000 );
     }
 }
-
-#if ( configCHECK_FOR_STACK_OVERFLOW > 0 )
-
-void vApplicationStackOverflowHook( TaskHandle_t xTask, char* pcTaskName )
-{
-    /* Check pcTaskName for the name of the offending task,
-     * or pxCurrentTCB if pcTaskName has itself been corrupted. */
-    (void)xTask;
-    (void)pcTaskName;
-}
-
-#endif /* #if ( configCHECK_FOR_STACK_OVERFLOW > 0 ) */
 
 int main( void )
 {
     SystemCoreClockUpdate();
     stdout_init();
 
-    printf( "Hello, World!\n" );
+    osKernelInitialize();
 
-    xTaskCreate( vTask1, "Task 1", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
-    xTaskCreate( vTask2, "Task 2", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
-    vTaskStartScheduler();
-    // Will not get here unless a task calls vTaskEndScheduler ()
+    // Initialize the Async Logger
+    Logger_Init();
+
+    const osThreadAttr_t task1_attr = { .name = "Task 1",
+                                        .stack_size = 2 * 1024,
+                                        .priority = osPriorityBelowNormal };
+
+    osThreadNew( vTask1, NULL, &task1_attr );
+
+    const osThreadAttr_t task2_attr = { .name = "Task 2",
+                                        .stack_size = 2 * 1024,
+                                        .priority = osPriorityBelowNormal };
+
+    osThreadNew( vTask2, NULL, &task2_attr );
+    osKernelStart();
+
     return 0;
 }

@@ -6,8 +6,8 @@ CompileFlags:
   CompilationDatabase: .
 ---
 If:
-  PathExclude: "FreeRTOSConfig.h"
+  PathExclude: ["src/include/FreeRTOSConfig.h"]
 CompileFlags:
   Add:
     - "-include"
-    - "lib/FreeRTOS/include/FreeRTOS.h"
+    - "lib/CMSIS-FreeRTOS/Source/include/FreeRTOS.h"
