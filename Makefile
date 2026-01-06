@@ -13,6 +13,11 @@ COMPILER_PREFIX := arm-none-eabi-
 CC := $(COMPILER_PREFIX)gcc
 AS := $(COMPILER_PREFIX)gcc
 LD := $(COMPILER_PREFIX)gcc
+GDB := $(COMPILER_PREFIX)gdb
+OBJCOPY := $(COMPILER_PREFIX)objcopy
+GDB_ARGS := -ex "target remote :1234"
+QEMU_SYSTEM := qemu-system-arm
+QEMU_ARGS ?=
 
 # --- Source Files ---
 # Application sources
@@ -75,16 +80,17 @@ LDFLAGS := $(TARGET_FLAGS) -T $(HW_DIR)/board/device/CMSDK_CM7/Source/GCC/gcc_ar
 all: $(BUILD_DIR)/$(ELF_NAME) $(BUILD_DIR)/$(BINARY_NAME)
 
 run-elf: $(BUILD_DIR)/$(ELF_NAME)
-	@qemu-system-arm -M mps2-an500 -kernel $(BUILD_DIR)/$(ELF_NAME) -nographic
+	@$(QEMU_SYSTEM) -M mps2-an500 -kernel $(BUILD_DIR)/$(ELF_NAME) -nographic $(QEMU_ARGS)
 
 # Method one: use more realistic loading method for binary files
 # Method two: easier way (but less realistic)
 run-bin: $(BUILD_DIR)/$(BINARY_NAME)
-	@qemu-system-arm -M mps2-an500 -device loader,file=$(BUILD_DIR)/$(BINARY_NAME),addr=0x00000000 -nographic
-	@# @qemu-system-arm -M mps2-an500 -kernel build/v2m-mps2.bin -nographic
+	@$(QEMU_SYSTEM) -M mps2-an500 -device loader,file=$(BUILD_DIR)/$(BINARY_NAME),addr=0x00000000 -nographic $(QEMU_ARGS)
+	@# @$(QEMU_SYSTEM) -M mps2-an500 -kernel build/v2m-mps2.bin -nographic $(QEMU_ARGS)
 
-# gdb: $(BUILD_DIR)/$(ELF_NAME)
-# 	@arm-none-eabi-gdb $(BUILD_DIR)/$(ELF_NAME)
+gdb: $(BUILD_DIR)/$(ELF_NAME)
+	@$(GDB) $(GDB_ARGS) $(BUILD_DIR)/$(ELF_NAME)
+
 test:
 	@echo "Found C sources: $(C_SRCS)"
 	@echo "Found ASM sources: $(ASM_SRCS)"
@@ -113,4 +119,4 @@ $(BUILD_DIR)/$(ELF_NAME): $(OBJS)
 
 $(BUILD_DIR)/$(BINARY_NAME): $(BUILD_DIR)/$(ELF_NAME)
 	@echo "[POST] Generating binary: $(BINARY_NAME)"
-	@arm-none-eabi-objcopy -O binary $< $@
+	@$(OBJCOPY) -O binary $< $@
