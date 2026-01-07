@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 extern int stdout_init( void );
+extern void create_timer_test(void);
 
 static void vTask1( void* pvParameters )
 {
@@ -36,7 +37,7 @@ int main( void )
     osKernelInitialize();
 
     // Initialize the Async Logger
-    Logger_Init();
+    logger_init();
 
     const osThreadAttr_t task1_attr = { .name = "Task 1",
                                         .stack_size = 2 * 1024,
@@ -49,6 +50,7 @@ int main( void )
                                         .priority = osPriorityBelowNormal };
 
     osThreadNew( vTask2, NULL, &task2_attr );
+    create_timer_test();
     osKernelStart();
 
     return 0;

@@ -5,7 +5,7 @@
  * @brief Initialize the Logger Task and Queue.
  *        Must be called before using LOG().
  */
-void Logger_Init(void);
+void logger_init(void);
 
 /**
  * @brief Asynchronous Log function.

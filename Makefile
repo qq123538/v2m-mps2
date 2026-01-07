@@ -13,9 +13,9 @@ COMPILER_PREFIX := arm-none-eabi-
 CC := $(COMPILER_PREFIX)gcc
 AS := $(COMPILER_PREFIX)gcc
 LD := $(COMPILER_PREFIX)gcc
-GDB := $(COMPILER_PREFIX)gdb
+GDB := gdb-multiarch
 OBJCOPY := $(COMPILER_PREFIX)objcopy
-GDB_ARGS := -ex "target remote :1234"
+GDB_ARGS := -q -ex "target remote :1234" -ex "source tools/freertos_gdb.py"
 QEMU_SYSTEM := qemu-system-arm
 QEMU_ARGS ?=
 
