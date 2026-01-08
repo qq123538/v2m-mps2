@@ -119,14 +119,22 @@ This project includes a custom GDB Python script (`tools/freertos_gdb.py`) to in
         ```
 
     *   **`freertos queues`**
-        Lists registered queues (requires `vQueueAddToRegistry`).
+        Lists registered queues and semaphores (requires `vQueueAddToRegistry` or giving the object a name in CMSIS v2).
+        
+    *   **`freertos semaphores`**
+        Lists registered semaphores and mutexes (filters out standard queues).
 
 ## Test Code
 
-The file `src/timer_test.c` initializes several CMSIS-RTOS2 timers (One-Shot, Auto-Reload) to populate the lists for testing the GDB commands.
+The project includes several test files in `src/` to populate FreeRTOS objects for GDB inspection:
+
+*   **`src/timer_test.c`**: Initializes CMSIS-RTOS2 timers (One-Shot, Auto-Reload).
+*   **`src/queue_test.c`**: Creates a sender and receiver task with a message queue to demonstrate blocking and data transfer.
+*   **`src/sem_test.c`**: Creates binary/counting semaphores and normal/recursive mutexes, with tasks holding them to demonstrate ownership logic.
+*   **`src/tasks_test.c`**: Creates simple periodic tasks to populate the task list.
 
 
 ## Todo
 
-- [ ] Add test code for queue
+- [x] Add test code for queue
 - [ ] Porting eazylogger

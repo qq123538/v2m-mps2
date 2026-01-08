@@ -1,4 +1,5 @@
 #include "cmsis_os2.h"
+#include "macro.h"
 
 /* Timer handles */
 osTimerId_t xOneShotTimer;
@@ -78,8 +79,8 @@ void create_timer_test(void)
     // Helper to convert ms to ticks roughly
     uint32_t freq = osKernelGetTickFreq(); // usually 1000
     
-    if (xOneShotTimer != NULL) osTimerStart(xOneShotTimer, (3333 * freq) / 1000);
-    if (xAutoReloadTimer1 != NULL) osTimerStart(xAutoReloadTimer1, (200 * freq) / 1000);
-    if (xAutoReloadTimer2 != NULL) osTimerStart(xAutoReloadTimer2, (5000 * freq) / 1000);
-    if (xLongNameTimer != NULL) osTimerStart(xLongNameTimer, (1000 * freq) / 1000);
+    CUSTOM_ASSERT(osTimerStart(xOneShotTimer, (3333 * freq) / 1000) == osOK);
+    CUSTOM_ASSERT(osTimerStart(xAutoReloadTimer1, (200 * freq) / 1000) == osOK);
+    CUSTOM_ASSERT(osTimerStart(xAutoReloadTimer2, (5000 * freq) / 1000) == osOK);
+    CUSTOM_ASSERT(osTimerStart(xLongNameTimer, (1000 * freq) / 1000) == osOK);
 }

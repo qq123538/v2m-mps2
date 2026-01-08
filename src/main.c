@@ -2,55 +2,32 @@
 #include CMSIS_device_header
 #include "cmsis_os2.h"
 #include "logger.h"
-#include <stdio.h>
 
 extern int stdout_init( void );
-extern void create_timer_test(void);
-
-static void vTask1( void* pvParameters )
-{
-    (void)pvParameters;
-
-    for ( ;; )
-    {
-        LOG( "Hello from Task 1\r\n" );
-        osDelay( 1000 );
-    }
-}
-
-static void vTask2( void* pvParameters )
-{
-    (void)pvParameters;
-
-    for ( ;; )
-    {
-        LOG( "Hello from Task 2\r\n" );
-        osDelay( 2000 );
-    }
-}
+extern void create_tasks_test( void );
+extern void create_timer_test( void );
+extern void create_queue_test( void );
+extern void create_sem_test( void );
 
 int main( void )
 {
+    // Abstracted System Initialization
     SystemCoreClockUpdate();
     stdout_init();
 
+    // Initialize the RTOS Kernel
     osKernelInitialize();
 
     // Initialize the Async Logger
     logger_init();
 
-    const osThreadAttr_t task1_attr = { .name = "Task 1",
-                                        .stack_size = 2 * 1024,
-                                        .priority = osPriorityBelowNormal };
-
-    osThreadNew( vTask1, NULL, &task1_attr );
-
-    const osThreadAttr_t task2_attr = { .name = "Task 2",
-                                        .stack_size = 2 * 1024,
-                                        .priority = osPriorityBelowNormal };
-
-    osThreadNew( vTask2, NULL, &task2_attr );
+    // Create various test tasks and objects
+    create_tasks_test();
     create_timer_test();
+    create_queue_test();
+    create_sem_test();
+
+    // Start the RTOS Kernel
     osKernelStart();
 
     return 0;

@@ -71,11 +71,17 @@ void LOG( const char* format, ... )
     // 1. Format to local stack buffer first
     va_list args;
     va_start( args, format );
-    int len = vsnprintf( temp_buf, LOGGER_MAX_LINE, format, args );
+    int len = vsnprintf( temp_buf, LOGGER_MAX_LINE - 2, format, args );
     va_end( args );
 
     if ( len <= 0 )
         return;
+
+    /* Automatically append \r\n if space permits */
+    if (len < LOGGER_MAX_LINE - 2) {
+        temp_buf[len++] = '\r';
+        temp_buf[len++] = '\n';
+    }
 
     // 2. Copy to Global Ring Buffer (Critical Section needed)
     uint32_t primask = __get_PRIMASK();

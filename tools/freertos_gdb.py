@@ -83,6 +83,42 @@ class FreeRTOSHelper:
             
             curr_node_ptr = curr_node['pxNext']
 
+    @staticmethod
+    def print_table(headers, rows):
+        """
+        Dynamically aligns and prints a table.
+        headers: List of string headers.
+        rows: List of lists (data rows).
+        """
+        if not rows:
+            print("No data available.")
+            return
+
+        # 1. Initialize widths with header lengths
+        widths = [len(h) for h in headers]
+
+        # 2. Check rows to find max width for each column
+        # We convert everything to string to check length safely
+        processed_rows = []
+        for row in rows:
+            str_row = [str(item) for item in row]
+            processed_rows.append(str_row)
+            for i, val in enumerate(str_row):
+                if i < len(widths):
+                    widths[i] = max(widths[i], len(val))
+
+        # 3. Create format string with padding (e.g., 2 spaces)
+        pad = 2
+        fmt = "".join([f"{{:<{w + pad}}}" for w in widths])
+
+        # 4. Print Header and Separator
+        print(fmt.format(*headers))
+        print("-" * (sum(widths) + pad * len(widths)))
+
+        # 5. Print Rows
+        for row in processed_rows:
+            print(fmt.format(*row))
+
 # --- Main Command (Prefix) ---
 class FreeRTOS(gdb.Command):
     """
@@ -126,7 +162,7 @@ class FreeRTOSTasks(gdb.Command):
             if addr in tasks: return
 
             try: name = tcb['pcTaskName'].string()
-            except: name = "???"
+            except: name = "??-"
             
             try: prio = int(tcb['uxPriority'])
             except: prio = -1
@@ -160,13 +196,24 @@ class FreeRTOSTasks(gdb.Command):
         # Ensure running task is there
         collect_task(current_tcb, "Running")
 
-        # Print
-        print(f"{ 'Address':<18} {'Name':<16} {'Prio':<6} {'State':<12} {'Stack Top'}")
-        print("-" * 75)
+        # Prepare Data for Table
+        headers = ["Address", "Name", "Prio", "State", "Stack Top"]
+        rows = []
+
+        # Sort by priority (High to Low)
         for addr, info in sorted(tasks.items(), key=lambda x: x[1]['prio'], reverse=True):
             state = info['state']
             if info['running']: state = "*Running"
-            print(f"{addr:<18} {info['name']:<16} {info['prio']:<6} {state:<12} {info['stack']}")
+            
+            rows.append([
+                addr,
+                info['name'],
+                str(info['prio']),
+                state,
+                str(info['stack'])
+            ])
+
+        FreeRTOSHelper.print_table(headers, rows)
 
 
 # --- Subcommand: Backtrace ---
@@ -265,7 +312,7 @@ class FreeRTOSBacktrace(gdb.Command):
     def do_bt(self, tcb, current_tcb):
         try:
             try: name = tcb['pcTaskName'].string()
-            except: name = "???"
+            except: name = "??-"
             print(f"Backtrace for Task: {name} ({tcb})")
 
             if tcb == current_tcb:
@@ -360,6 +407,9 @@ class FreeRTOSQueues(gdb.Command):
         super(FreeRTOSQueues, self).__init__("freertos queues", gdb.COMMAND_USER)
 
     def invoke(self, arg, from_tty):
+        self.print_queues(show_all=True)
+
+    def print_queues(self, show_all=True):
         if not FreeRTOSHelper.is_scheduler_running():
             print("FreeRTOS scheduler does not appear to be running (pxCurrentTCB is NULL).")
             return
@@ -372,10 +422,11 @@ class FreeRTOSQueues(gdb.Command):
             print("Error: xQueueRegistry not found. Ensure configQUEUE_REGISTRY_SIZE > 0.")
             return
 
-        print(f"{ 'Name':<20} {'Handle':<18} {'Waiting':<8} {'Length':<8} {'ItemSize'}")
-        print("-" * 75)
-
         q_type = FreeRTOSHelper.get_queue_type()
+        
+        # 1. Collect Data
+        rows = []
+        headers = ["Name", "Handle", "Type", "Waiting", "Length", "ItemSize", "TxWait", "RxWait", "Holder"]
 
         for i in range(reg_size):
             item = registry[i]
@@ -389,15 +440,88 @@ class FreeRTOSQueues(gdb.Command):
                 
                 # Cast to Queue_t to read details
                 q = handle.cast(q_type)
-                waiting = int(q['uxMessagesWaiting'])
-                length = int(q['uxLength'])
-                item_size = int(q['uxItemSize'])
+                waiting = str(int(q['uxMessagesWaiting']))
+                length = str(int(q['uxLength']))
+                item_size = str(int(q['uxItemSize']))
+                addr = str(handle).split()[0]
                 
-                print(f"{name:<20} {str(handle):<18} {waiting:<8} {length:<8} {item_size}")
+                # Get Tx/Rx Wait Counts
+                try: tx_wait = str(int(q['xTasksWaitingToSend']['uxNumberOfItems']))
+                except: tx_wait = "?"
+                
+                try: rx_wait = str(int(q['xTasksWaitingToReceive']['uxNumberOfItems']))
+                except: rx_wait = "?"
+
+                # Decode Type
+                # 0: Queue, 1: Mutex, 2: Counting, 3: Binary, 4: Recursive
+                q_type_code = -1
+                try: q_type_code = int(q['ucQueueType'])
+                except: pass
+                
+                type_str = "?"
+                is_sem = False
+                if q_type_code == 0: type_str = "Queue"
+                elif q_type_code == 1: 
+                    type_str = "Mutex"
+                    is_sem = True
+                elif q_type_code == 2: 
+                    type_str = "Counting"
+                    is_sem = True
+                elif q_type_code == 3: 
+                    type_str = "Binary"
+                    is_sem = True
+                elif q_type_code == 4: 
+                    type_str = "Recursive"
+                    is_sem = True
+                else: type_str = f"? ({q_type_code})"
+
+                # If filtering for semaphores, skip if it's a queue
+                if not show_all and not is_sem:
+                    continue
+
+                # Get Holder (Mutexes/Recursive only)
+                holder_name = ""
+                if q_type_code == 1 or q_type_code == 4:
+                    try:
+                        mutex_holder = q['u']['xSemaphore']['xMutexHolder']
+                        if int(mutex_holder) != 0:
+                             # It's a TaskHandle_t (TCB*)
+                             tcb = mutex_holder.cast(FreeRTOSHelper.get_tcb_type())
+                             try: holder_name = tcb['pcTaskName'].string()
+                             except: holder_name = str(mutex_holder).split()[0]
+                    except: 
+                        holder_name = "?"
+
+                rows.append([name, addr, type_str, waiting, length, item_size, tx_wait, rx_wait, holder_name])
                 
             except Exception as e:
                 # print(e)
                 pass
+
+        if not rows:
+            print("No queues/semaphores found.")
+            return
+
+        FreeRTOSHelper.print_table(headers, rows)
+
+
+# --- Subcommand: Semaphores ---
+class FreeRTOSSemaphores(gdb.Command):
+    """
+    List registered FreeRTOS semaphores and mutexes.
+    Alias for 'freertos queues' but filters for non-queue types.
+    """
+    def __init__(self):
+        super(FreeRTOSSemaphores, self).__init__("freertos semaphores", gdb.COMMAND_USER)
+        self.queue_cmd = None
+
+    def invoke(self, arg, from_tty):
+        # Instantiate the queue command helper if needed, or just reuse logic
+        # We can't easily access the other instance, so we create a temporary one or refactor
+        # Simplest is to just instantiate logic.
+        cmd = FreeRTOSQueues()
+        cmd.print_queues(show_all=False)
+
 
 # --- Subcommand: Timers ---
 class FreeRTOSTimers(gdb.Command):
@@ -434,18 +558,15 @@ class FreeRTOSTimers(gdb.Command):
             print("Error: Timer lists not found (check configUSE_TIMERS=1 and symbols).")
             return
 
-        print(f"{'Timer':<45} {'ID':<15} {'PeriodInMs':<14} {'Overflow':<10} {'Status':<25} {'Callback'}")
-        print("-" * 130)
+        headers = ["Timer Name", "Handle", "ID", "Period(Ticks)", "Overflow", "Status", "Callback"]
+        rows = []
 
-        def print_timer(owner, is_overflow):
+        def collect_timer(owner, is_overflow):
             tmr = owner.cast(timer_type)
             addr = str(tmr).split()[0]
             try: name = tmr['pcTimerName'].string()
-            except: name = "???"
+            except: name = "??-"
             
-            # Combined Timer Column
-            timer_display = f"{name} ({addr})"
-
             try: period = int(tmr['xTimerPeriodInTicks'])
             except: period = 0
 
@@ -466,14 +587,14 @@ class FreeRTOSTimers(gdb.Command):
                 status = int(tmr['ucStatus'])
                 if status & 0x01: status_str.append("Active")
                 if status & 0x02: status_str.append("Static")
-                if status & 0x04: status_str.append("AutoReload")
+                if status & 0x04: status_str.append("AR") # AutoReload abbreviated
             except: 
                 status_str.append("?")
             
             status_display = ",".join(status_str)
 
             # Callback symbol resolution
-            callback_name = "???"
+            callback_name = "??-"
             try:
                 # Cast to int to get raw address, avoiding "0x... <Symbol>" string issues in gdb command
                 callback_ptr = int(tmr['pxCallbackFunction'])
@@ -486,7 +607,7 @@ class FreeRTOSTimers(gdb.Command):
 
             overflow_str = "Yes" if is_overflow else "No"
             
-            print(f"{timer_display:<45} {timer_id:<15} {period:<14} {overflow_str:<10} {status_display:<25} {callback_name}")
+            rows.append([name, addr, timer_id, str(period), overflow_str, status_display, callback_name])
 
         # Iterate lists with context
         # lists[0] is typically pxCurrentTimerList (Normal)
@@ -509,17 +630,20 @@ class FreeRTOSTimers(gdb.Command):
              except: pass
 
         if current_list:
-             FreeRTOSHelper.walk_list(current_list, lambda o: print_timer(o, False))
+             FreeRTOSHelper.walk_list(current_list, lambda o: collect_timer(o, False))
         
         if overflow_list:
-             FreeRTOSHelper.walk_list(overflow_list, lambda o: print_timer(o, True))
+             FreeRTOSHelper.walk_list(overflow_list, lambda o: collect_timer(o, True))
+
+        FreeRTOSHelper.print_table(headers, rows)
 
 # Registration
 FreeRTOS()
 FreeRTOSTasks()
 FreeRTOSBacktrace()
 FreeRTOSQueues()
+FreeRTOSSemaphores()
 FreeRTOSTimers()
 
 print("FreeRTOS GDB Inspector loaded.")
-print("Commands: freertos [tasks | bt | queues | timers]")
+print("Commands: freertos [tasks | bt | queues | semaphores | timers]")

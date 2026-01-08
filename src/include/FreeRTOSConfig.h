@@ -56,7 +56,7 @@
 //  <o>Total heap size [bytes] <0-0xFFFFFFFF>
 //  <i> Heap memory size in bytes.
 //  <i> Default: 8192
-#define configTOTAL_HEAP_SIZE                     ((size_t)2 * 8192)
+#define configTOTAL_HEAP_SIZE                     ((size_t)20 * 1024)
 
 //  <o>Kernel tick frequency [Hz] <0-0xFFFFFFFF>
 //  <i> Kernel tick rate in Hz.
@@ -139,7 +139,7 @@
 //  <i> Define maximum number of queue objects registered for debug purposes.
 //  <i> The queue registry is used by kernel aware debuggers to locate queue and semaphore structures and display associated text names.
 //  <i> Default: 0
-#define configQUEUE_REGISTRY_SIZE                 0
+#define configQUEUE_REGISTRY_SIZE                 15
 
 // <h>Event Recorder Configuration
 // <i> Initialize and setup Event Recorder level filtering.
