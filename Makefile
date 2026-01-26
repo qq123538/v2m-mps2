@@ -7,6 +7,7 @@ BUILD_DIR := build
 APP_DIR := src
 LIB_DIR := lib
 HW_DIR := hardware
+TOOLS_DIR := tools
 
 # --- Tools ---
 COMPILER_PREFIX := arm-none-eabi-
@@ -41,6 +42,11 @@ C_SRCS += $(FREERTOS_PORT_DIR)/MemMang/heap_4.c
 # CMSIS-RTOS2 Wrapper
 CMSIS_RTOS_DIR := $(LIB_DIR)/CMSIS-FreeRTOS/CMSIS/RTOS2/FreeRTOS
 C_SRCS += $(CMSIS_RTOS_DIR)/Source/cmsis_os2.c
+C_SRCS += hardware/cmsis/CMSIS/6.2.0/CMSIS/RTOS2/Source/os_systick.c
+
+# EventRecord
+EVENT_RECORD_DIR := $(TOOLS_DIR)/CMSIS-View/EventRecorder
+C_SRCS += $(EVENT_RECORD_DIR)/Source/EventRecorder.c
 
 # Construct object file paths, placing them inside the build directory
 OBJS := $(patsubst %.c,$(BUILD_DIR)/obj/%.o,$(C_SRCS))
@@ -58,9 +64,11 @@ INCLUDE_DIRS += $(HW_DIR)/cmsis/CMSIS/6.2.0/CMSIS/RTOS2/Include
 INCLUDE_DIRS += $(FREERTOS_KERNEL_DIR)/include
 INCLUDE_DIRS += $(FREERTOS_PORT_DIR)/GCC/ARM_CM7/r0p1
 INCLUDE_DIRS += $(CMSIS_RTOS_DIR)/Include
+INCLUDE_DIRS += $(EVENT_RECORD_DIR)/Include
+INCLUDE_DIRS += $(EVENT_RECORD_DIR)/Config
 
 # --- Macro Definitions ---
-DEFINES = CMSDK_CM7_SP
+DEFINES = CMSDK_CM7_SP _RTE_
 
 # --- Build Flags ---
 # Check Compiler

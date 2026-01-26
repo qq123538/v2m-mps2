@@ -2,6 +2,7 @@
 #include CMSIS_device_header
 #include "cmsis_os2.h"
 #include "logger.h"
+#include "EventRecorder.h"
 
 extern int stdout_init( void );
 extern void create_tasks_test( void );
@@ -14,6 +15,7 @@ int main( void )
     // Abstracted System Initialization
     SystemCoreClockUpdate();
     stdout_init();
+    EventRecorderInitialize( EventRecordAll, 1 );
 
     // Initialize the RTOS Kernel
     osKernelInitialize();

@@ -251,6 +251,15 @@ SECTIONS
     __bss2_end__ = .;
   } > RAM2 AT > RAM2
 */
+  .noinit (NOLOAD) :
+  {
+    . = ALIGN(4);
+    __noinit_start = .;
+    *(.noinit)
+    *(.noinit.*)
+    . = ALIGN(4);
+    __noinit_end = .;
+  } > RAM
 
   .heap (COPY) :
   {
